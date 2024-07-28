@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -9,8 +10,9 @@ import (
 const baseURL = "https://vinvoice.viettel.vn/api"
 
 type AuthClient struct {
-	client *resty.Client
-	token  string
+	client  *resty.Client
+	token   string
+	tokenAt time.Time
 }
 
 type InvoiceClient struct {
@@ -51,7 +53,14 @@ func (c *AuthClient) GetToken(authObj map[string]string) (string, error) {
 		return "", err
 	}
 
+	c.token = token
+	c.tokenAt = time.Now()
+
 	return token, nil
+}
+
+func (c *AuthClient) IsTokenExpired() bool {
+	return time.Since(c.tokenAt).Seconds() >= 250
 }
 
 func NewApiClient(baseURL string, authObj map[string]string) (*InvoiceClient, error) {
