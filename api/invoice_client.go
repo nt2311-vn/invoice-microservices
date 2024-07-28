@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -9,9 +10,21 @@ import (
 
 const baseURL = "https://vinvoice.viettel.vn/api"
 
+type TokenResponse struct {
+	AccessToken    string `json:"access_token"`
+	ExpiresIn      int    `json:"expires_in"`
+	Iat            int    `json:"iat"`
+	InvoiceCluster string `json:"invoice_cluster"`
+	Jti            string `json:"jti"`
+	RefreshToken   string `json:"refresh_token"`
+	Scope          string `json:"scope"`
+	TokenType      string `json:"token_type"`
+	Type           int    `json:"type"`
+}
+
 type AuthClient struct {
 	client  *resty.Client
-	token   string
+	token   *TokenResponse
 	tokenAt time.Time
 }
 
@@ -26,7 +39,7 @@ func NewAuthClient() *AuthClient {
 	return &AuthClient{client: client}
 }
 
-func (c *AuthClient) GetToken(authObj map[string]string) (string, error) {
+func (c *AuthClient) GetToken(authObj map[string]string) (*TokenResponse, error) {
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
 		SetHeader("Accept-Language", "en-US,en;q=0.9,vi;q=0.8").
@@ -35,22 +48,17 @@ func (c *AuthClient) GetToken(authObj map[string]string) (string, error) {
 		SetHeader("Referer", "https://vinvoice.viettel.vn/account/login").
 		SetBody(authObj).Post("https://vinvoice.viettel.vn/api/auth/login")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if resp.IsError() {
-		return "", resp.Error().(error)
+		return nil, fmt.Errorf("error: %v", resp.Error())
 	}
 
-	var result map[string]interface{}
-	err = json.Unmarshal(resp.Body(), &result)
+	token := &TokenResponse{}
+	err = json.Unmarshal(resp.Body(), token)
 	if err != nil {
-		return "", err
-	}
-
-	token, ok := result["token"].(string)
-	if !ok {
-		return "", err
+		return nil, err
 	}
 
 	c.token = token
@@ -70,7 +78,7 @@ func NewApiClient(baseURL string, authObj map[string]string) (*InvoiceClient, er
 		return nil, err
 	}
 
-	client := resty.New().SetBaseURL(baseURL).SetAuthToken(token)
+	client := resty.New().SetBaseURL(baseURL).SetAuthToken(token.AccessToken)
 
 	return &InvoiceClient{client: client, authClient: authClient}, nil
 }
