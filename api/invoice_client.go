@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/joho/godotenv"
 )
 
 const baseURL = "https://vinvoice.viettel.vn/api"
@@ -39,7 +41,17 @@ func NewAuthClient() *AuthClient {
 	return &AuthClient{client: client}
 }
 
-func (c *AuthClient) GetToken(authObj map[string]string) (*TokenResponse, error) {
+func (c *AuthClient) GetToken() (*TokenResponse, error) {
+	err := godotenv.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	authObj := map[string]string{
+		"username": os.Getenv("INVOICE_CLIENT_USERNAME"),
+		"password": os.Getenv("INVOICE_CLIENT_PASSWORD"),
+	}
+
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
 		SetHeader("Accept-Language", "en-US,en;q=0.9,vi;q=0.8").
@@ -71,9 +83,9 @@ func (c *AuthClient) IsTokenExpired() bool {
 	return time.Since(c.tokenAt).Seconds() >= 250
 }
 
-func NewApiClient(baseURL string, authObj map[string]string) (*InvoiceClient, error) {
+func NewApiClient() (*InvoiceClient, error) {
 	authClient := NewAuthClient()
-	token, err := authClient.GetToken(authObj)
+	token, err := authClient.GetToken()
 	if err != nil {
 		return nil, err
 	}
