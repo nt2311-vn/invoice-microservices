@@ -113,26 +113,29 @@ func (c *InvoiceClient) FetchInvoices() ([]models.InvoiceResponse, error) {
 
 	resp, err := c.client.R().
 		SetQueryParams(map[string]string{
-			"adjustmentType.equals": "1",
-			"supplierId.equals":     "16087",
-			"dataType.equals":       "0",
-			"taxCode.equals":        "0301482205",
-			"sort":                  "issueDate,desc",
-			"invoiceSeri.equals":    "C24MAA",
-			"size":                  "10",
-			"page":                  fmt.Sprintf("%d", page),
+			"adjustmentType.equals":          "1",
+			"supplierId.equals":              "16087",
+			"dataType.equals":                "0",
+			"taxCode.equals":                 "0301482205",
+			"sort":                           "issueDate,desc",
+			"invoiceSeri.equals":             "C24MAA",
+			"invoiceStatus.equals":           "1",
+			"size":                           "10",
+			"page":                           fmt.Sprintf("%d", page),
+			"createdDate.greaterThanOrEqual": "2021-01-01T00:00:00Z",
+			"createdDate.lessThanOrEqual":    "2021-12-31T23:59:59Z",
 		}).SetHeader("Authorization", fmt.Sprintf("Bearer %s", c.authClient.token.AccessToken)).Get(baseURL + "services/einvoiceapplication/api/invoice/search")
 	if err != nil {
 		return nil, fmt.Errorf("Cannot request invoice: %v\n", err)
 	}
 
-	if resp.IsError() {
-		return nil, fmt.Errorf("error: %v", resp.Error())
-	}
-
 	invResps := []models.InvoiceResponse{}
+	invResp := models.InvoiceResponse{}
 
-	err = json.Unmarshal(resp.Body(), &invResps)
+	err = json.Unmarshal(resp.Body(), &invResp)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot unmarshal json: %v\n", err)
+	}
 	fmt.Println(invResps)
 
 	return invResps, nil
